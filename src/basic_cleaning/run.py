@@ -14,12 +14,10 @@ logger = logging.getLogger()
 # DO NOT MODIFY
 def go(args):
 
-    run = wandb.init(job_type="basic_cleaning")
+    run = wandb.init(project="nyc_airbnb", group="cleaning", job_type="basic_cleaning", save_code=True)
     run.config.update(args)
 
     # Download input artifact. This will also log that this script is using this
-    
-    run = wandb.init(project="nyc_airbnb", group="cleaning", save_code=True)
     artifact_local_path = run.use_artifact(args.input_artifact).file()
     df = pd.read_csv(artifact_local_path)
     # Drop outliers
@@ -47,6 +45,27 @@ def go(args):
  )
     artifact.add_file("clean_sample.csv")
     run.log_artifact(artifact)
+    # wait for artifact to be available and add a 'reference' alias so downstream
+    # steps can request clean_sample.csv:reference
+    artifact.wait()
+
+    try:
+        api = wandb.Api()
+        # Use run.entity (user or team) and project to build the artifact path
+        entity = getattr(run, "entity", None) or api.default_entity
+        project = getattr(run, "project", None)
+        if entity and project:
+            artifact_ref = f"{entity}/{project}/{args.output_artifact}:latest"
+        else:
+            artifact_ref = f"{args.output_artifact}:latest"
+        logged = api.artifact(artifact_ref)
+        if "reference" not in logged.aliases:
+            logged.aliases.append("reference")
+            logged.save()
+    except Exception:
+        # If aliasing fails (e.g., missing WANDB_API_KEY), don't crash the run;
+        # downstream steps may still use :latest or be retried manually.
+        logger.exception("Failed to add 'reference' alias to artifact")
 
 
 # TODO: In the code below, fill in the data type for each argument. The data type should be str, float or int. 
@@ -64,36 +83,36 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--output_artifact", 
-        type = ## INSERT TYPE HERE: str, float or int,
-        help = "Output artifact for cleaned data" ## INSERT DESCRIPTION HERE,
+        type = str, ## INSERT TYPE HERE: str, float or int,
+        help = "Output artifact for cleaned data", ## INSERT DESCRIPTION HERE,
         required = True
     )
 
     parser.add_argument(
         "--output_type", 
-        type = str## INSERT TYPE HERE: str, float or int,
-        help = "Description of the output dataset"## INSERT DESCRIPTION HERE,
+        type = str, ## INSERT TYPE HERE: str, float or int,
+        help = "Description of the output dataset",## INSERT DESCRIPTION HERE,
         required = True
     )
 
     parser.add_argument(
         "--output_description", 
-        type = str ## INSERT TYPE HERE: str, float or int,
-        help = "Description of the output dataset"## INSERT DESCRIPTION HERE,
+        type = str, ## INSERT TYPE HERE: str, float or int,
+        help = "Description of the output dataset",## INSERT DESCRIPTION HERE,
         required = True
     )
 
     parser.add_argument(
         "--min_price", 
-        type = float## INSERT TYPE HERE: str, float or int,
-        help = "Minimum  house price to be considered"## INSERT DESCRIPTION HERE,
+        type = float, ## INSERT TYPE HERE: str, float or int,
+        help = "Minimum  house price to be considered",## INSERT DESCRIPTION HERE,
         required = True
     )
 
     parser.add_argument(
         "--max_price",
-        type = float## INSERT TYPE HERE: str, float or int,
-        help = "Maximum house price to be considered"## INSERT DESCRIPTION HERE,
+        type = float, ## INSERT TYPE HERE: str, float or int,
+        help = "Maximum house price to be considered",## INSERT DESCRIPTION HERE,
         required = True
     )
 

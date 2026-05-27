@@ -1,6 +1,7 @@
 import pytest
 import pandas as pd
 import wandb
+import os
 
 
 def pytest_addoption(parser):
@@ -13,33 +14,52 @@ def pytest_addoption(parser):
 
 @pytest.fixture(scope='session')
 def data(request):
-    run = wandb.init(job_type="data_tests", resume=True)
+    csv_option = request.config.option.csv
 
-    # Download input artifact. This will also note that this script is using this
-    # particular version of the artifact
-    data_path = run.use_artifact(request.config.option.csv).file()
-
-    if data_path is None:
+    if csv_option is None:
         pytest.fail("You must provide the --csv option on the command line")
 
-    df = pd.read_csv(data_path)
+    # If a local file path was provided, load it directly for easier local testing
+    if os.path.exists(csv_option):
+        return pd.read_csv(csv_option)
 
+    # Otherwise try to download from WandB as an artifact
+    run = wandb.init(job_type="data_tests", resume=True)
+
+    try:
+        data_path = run.use_artifact(csv_option).file()
+    except Exception as e:
+        pytest.fail(f"Failed to download CSV artifact '{csv_option}': {e}")
+
+    if data_path is None:
+        pytest.fail("Failed to resolve CSV artifact path")
+
+    df = pd.read_csv(data_path)
     return df
 
 
 @pytest.fixture(scope='session')
 def ref_data(request):
-    run = wandb.init(job_type="data_tests", resume=True)
+    ref_option = request.config.option.ref
 
-    # Download input artifact. This will also note that this script is using this
-    # particular version of the artifact
-    data_path = run.use_artifact(request.config.option.ref).file()
-
-    if data_path is None:
+    if ref_option is None:
         pytest.fail("You must provide the --ref option on the command line")
 
-    df = pd.read_csv(data_path)
+    # Allow using a local CSV file as reference for local tests
+    if os.path.exists(ref_option):
+        return pd.read_csv(ref_option)
 
+    run = wandb.init(job_type="data_tests", resume=True)
+
+    try:
+        data_path = run.use_artifact(ref_option).file()
+    except Exception as e:
+        pytest.fail(f"Failed to download reference artifact '{ref_option}': {e}")
+
+    if data_path is None:
+        pytest.fail("Failed to resolve reference artifact path")
+
+    df = pd.read_csv(data_path)
     return df
 
 
