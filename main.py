@@ -118,10 +118,11 @@ def go(config: DictConfig):
                     "stratify_by": config["data_split"]["stratify_by"],
                     "rf_config": rf_config,
                     "max_tfidf_features": config["modeling"]["max_tfidf_features"],
+                    "output_artifact": "random_forest_export",
+                    "output_type": "model_export",
                 },
             )
-            
-            
+
             ##################
 
 
