@@ -91,8 +91,10 @@ def go(config: DictConfig):
                     "test_size": config["data_split"]["test_size"],
                     "random_seed": config["data_split"]["random_seed"],
                     "stratify_by": config["data_split"]["stratify_by"],
+                    "output_artifact": "trainval_data.csv",
                 },
-            )    
+            )
+
     
 
             # NOTE: we need to serialize the random forest configuration into JSON
